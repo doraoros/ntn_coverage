@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ntn-6g-coverage-predictor"
+version = "0.7.0"
+description = "3GPP NTN coverage: multi-beam SINR, frequency reuse, TLE"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.11",
+  "matplotlib>=3.8",
+  "plotly>=5.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.6"]
+tle = ["sgp4>=2.23"]
+
+[project.scripts]
+ntn-coverage = "ntn_coverage.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ntn_coverage = ["web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

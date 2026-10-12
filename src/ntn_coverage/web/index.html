@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ntn-coverage</title>
+  <script src="/plotly.min.js"></script>
+  <style>
+    :root {
+      --bg: #efefef;
+      --panel: #f7f7f7;
+      --line: #bdbdbd;
+      --text: #1c1c1c;
+      --muted: #5a5a5a;
+      --head: #3a3a3a;
+      --bad: #9b2c2c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 13px/1.4 "Segoe UI", sans-serif; }
+    button, select, input { font: inherit; color: var(--text); background: #fff;
+      border: 1px solid #8a8a8a; border-radius: 2px; }
+    button { cursor: pointer; padding: 5px 10px; background: #e6e6e6; }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    button.primary { background: #d0d0d0; font-weight: 600; }
+    header {
+      height: 36px; display: flex; align-items: center; gap: 16px; padding: 0 12px;
+      background: var(--head); color: #f3f3f3;
+    }
+    header strong { font-size: 13px; font-weight: 600; }
+    header span { color: #c8c8c8; font-size: 12px; }
+    .status { margin-left: auto; font-variant-numeric: tabular-nums; color: #c8c8c8; }
+    .app { display: grid; grid-template-columns: 250px 1fr 320px; height: calc(100% - 36px); }
+    aside, .side { padding: 10px 12px; overflow: auto; background: var(--panel); border-right: 1px solid var(--line); }
+    .side { border-right: 0; border-left: 1px solid var(--line); }
+    label { display: block; color: var(--muted); font-size: 11px; margin: 8px 0 3px; }
+    select, input[type=number] { width: 100%; padding: 4px 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions { display: grid; gap: 6px; margin-top: 12px; }
+    .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; font-variant-numeric: tabular-nums; }
+    .kpi { background: #fff; border: 1px solid var(--line); padding: 8px; }
+    .kpi .v { font-size: 16px; }
+    .kpi .l { color: var(--muted); font-size: 11px; }
+    .stage { display: grid; grid-template-rows: 1fr 230px; min-width: 0; min-height: 0; background: #fff; }
+    #map { cursor: crosshair; height: calc(100% - 32px); }
+    .toolbar { display: flex; gap: 8px; align-items: center; padding: 6px 10px 0; }
+    .toolbar select { width: auto; }
+    .hint, .err { color: var(--muted); font-size: 12px; }
+    .err { color: var(--bad); min-height: 16px; margin-top: 8px; }
+    pre.budget {
+      font: 12px/1.45 Consolas, "Courier New", monospace; white-space: pre-wrap;
+      background: #fff; border: 1px solid var(--line); padding: 8px; margin: 0 0 10px;
+    }
+    h2 { font-size: 12px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+    #pass { height: 240px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>ntn-coverage</strong>
+    <span>TR 38.811 / 38.821</span>
+    <div class="status" id="ready">idle</div>
+  </header>
+  <div class="app">
+    <aside>
+      <h2>Run</h2>
+      <label>Scenario</label>
+      <select id="scenario"></select>
+      <div class="row">
+        <div>
+          <label>Region</label>
+          <select id="region"></select>
+        </div>
+        <div>
+          <label>FRF</label>
+          <select id="reuse">
+            <option value="1">1</option>
+            <option value="3" selected>3</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Grid (°)</label>
+          <input id="res" type="number" min="0.1" max="1" step="0.05" value="0.25">
+        </div>
+        <div>
+          <label>t (s)</label>
+          <input id="time" type="number" min="0" step="30" value="0">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Antenna</label>
+          <select id="antenna">
+            <option value="">default</option>
+            <option value="cellular">cellular</option>
+            <option value="steered">steered</option>
+            <option value="nadir">nadir</option>
+          </select>
+        </div>
+        <div>
+          <label>Coord.</label>
+          <select id="coordination">
+            <option value="">exclusive</option>
+            <option value="exclusive">exclusive</option>
+            <option value="uncoordinated">uncoordinated</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Environment</label>
+          <select id="environment">
+            <option value="">default</option>
+            <option value="rural">rural</option>
+            <option value="suburban">suburban</option>
+            <option value="urban">urban</option>
+            <option value="dense_urban">dense urban</option>
+            <option value="mixed">mixed</option>
+          </select>
+        </div>
+        <div>
+          <label>Rain mm/h</label>
+          <input id="rain" type="number" min="0" step="1" value="0">
+        </div>
+      </div>
+      <label style="margin-top:10px"><input id="indoor" type="checkbox"> indoor</label>
+      <div class="actions">
+        <button class="primary" id="run">Compute snapshot</button>
+        <button id="compare">FRF 1 vs 3</button>
+      </div>
+      <div class="err" id="err"></div>
+      <div class="kpis">
+        <div class="kpi"><div class="l">coverage</div><div class="v" id="k-cov">—</div></div>
+        <div class="kpi"><div class="l">median SINR</div><div class="v" id="k-sinr">—</div></div>
+        <div class="kpi"><div class="l">mean Mbps</div><div class="v" id="k-rate">—</div></div>
+        <div class="kpi"><div class="l">mean C/N</div><div class="v" id="k-cn">—</div></div>
+      </div>
+    </aside>
+    <section class="stage">
+      <div>
+        <div class="toolbar">
+          <select id="field">
+            <option value="sinr_db">SINR dB</option>
+            <option value="snr_db">C/N dB</option>
+            <option value="cir_db">C/I dB</option>
+            <option value="rate_mbps">Mbps</option>
+            <option value="p_cover">P(cover) %</option>
+            <option value="elevation_deg">elev °</option>
+          </select>
+          <select id="layer" style="display:none"></select>
+          <span class="hint">Compute, then click the map. Beams overlay on probe.</span>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div id="cdf"></div>
+    </section>
+    <aside class="side">
+      <h2>Probe</h2>
+      <pre class="budget" id="budget">click the map</pre>
+      <button id="passbtn" disabled>Pass 20 min</button>
+      <h2 style="margin-top:12px">Pass</h2>
+      <div id="pass"></div>
+    </aside>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const BEAM_COL = ["#b4554a", "#3d7a52", "#3a5f8a"];
+    const state = { meta: null, run: null, layerKey: null, probe: null };
+
+    function body(extra = {}) {
+      const payload = {
+        scenario: $("scenario").value,
+        region: $("region").value,
+        reuse: Number($("reuse").value),
+        resolution_deg: Number($("res").value),
+        t_s: Number($("time").value),
+        rain_rate_mm_h: Number($("rain").value),
+        indoor: $("indoor").checked,
+        ...extra,
+      };
+      if ($("antenna").value) payload.antenna = $("antenna").value;
+      if ($("coordination").value) payload.coordination = $("coordination").value;
+      if ($("environment").value) payload.environment = $("environment").value;
+      return payload;
+    }
+
+    async function api(path, payload) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    function fmt(v, d = 2, unit = "") {
+      if (v === null || v === undefined || Number.isNaN(v)) return "—";
+      return `${Number(v).toFixed(d)}${unit}`;
+    }
+
+    function activeLayer() {
+      if (!state.run) return null;
+      const keys = Object.keys(state.run.layers);
+      const key = state.layerKey && state.run.layers[state.layerKey] ? state.layerKey : keys[keys.length - 1];
+      state.layerKey = key;
+      return state.run.layers[key];
+    }
+
+    function setBusy(on, text) {
+      $("run").disabled = on;
+      $("compare").disabled = on;
+      $("passbtn").disabled = on || !state.probe;
+      $("ready").textContent = on ? (text || "running") : "ready";
+    }
+
+    function fieldSpec(name) {
+      if (name === "sinr_db") return { zmin: -5, zmax: 8, cs: "RdYlGn", label: "SINR dB" };
+      if (name === "snr_db") return { zmin: -2, zmax: 16, cs: "Viridis", label: "C/N dB" };
+      if (name === "cir_db") return { zmin: -2, zmax: 20, cs: "Cividis", label: "C/I dB" };
+      if (name === "rate_mbps") return { zmin: 0, zmax: 90, cs: "Hot", label: "Mbps" };
+      if (name === "p_cover") return { zmin: 0, zmax: 100, cs: "RdYlGn", label: "P(cover) %" };
+      return { zmin: 10, zmax: 90, cs: "Plasma", label: "elev °" };
+    }
+
+    function outlineTraces() {
+      const traces = [];
+      if (state.meta && $("region").value === "romania") {
+        traces.push({
+          type: "scatter",
+          x: state.meta.outline.map(p => p[0]),
+          y: state.meta.outline.map(p => p[1]),
+          mode: "lines",
+          line: { color: "#222", width: 1 },
+          hoverinfo: "skip",
+        });
+        traces.push({
+          type: "scatter",
+          x: state.meta.cities.map(c => c.lon),
+          y: state.meta.cities.map(c => c.lat),
+          text: state.meta.cities.map(c => c.name),
+          mode: "markers+text",
+          marker: { size: 5, color: "#111" },
+          textposition: "top right",
+          textfont: { size: 10, color: "#111" },
+          hovertemplate: "%{text}<extra></extra>",
+        });
+      }
+      return traces;
+    }
+
+    function beamTraces() {
+      if (!state.probe || !state.probe.beams) return [];
+      return state.probe.beams.map((b) => ({
+        type: "scatter",
+        x: b.lon,
+        y: b.lat,
+        mode: "lines",
+        fill: "toself",
+        fillcolor: b.serving ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.02)",
+        line: { width: b.serving ? 2.2 : 1, color: BEAM_COL[b.color % 3] },
+        hoverinfo: "skip",
+      }));
+    }
+
+    function baseLayout(extra) {
+      return {
+        paper_bgcolor: "#fff",
+        plot_bgcolor: "#fff",
+        font: { color: "#1c1c1c", size: 11 },
+        showlegend: false,
+        ...extra,
+      };
+    }
+
+    function renderMap() {
+      const layer = activeLayer();
+      const traces = [];
+      if (layer) {
+        const field = $("field").value;
+        const spec = fieldSpec(field);
+        traces.push({
+          type: "heatmap",
+          x: layer.lons,
+          y: layer.lats,
+          z: layer[field],
+          zmin: spec.zmin,
+          zmax: spec.zmax,
+          colorscale: spec.cs,
+          colorbar: { title: spec.label, thickness: 14, outlinewidth: 0 },
+          hovertemplate: "lon %{x:.2f}°<br>lat %{y:.2f}°<br>%{z:.2f}<extra></extra>",
+        });
+        if (layer.sats) {
+          traces.push({
+            type: "scatter",
+            x: layer.sats.lon,
+            y: layer.sats.lat,
+            mode: "markers",
+            marker: { size: 7, color: "#9b2c2c", line: { color: "#fff", width: 0.6 } },
+            text: layer.sats.id || [],
+            hovertemplate: "%{text}<extra></extra>",
+          });
+        }
+      }
+      traces.push(...outlineTraces());
+      traces.push(...beamTraces());
+      if (state.probe) {
+        traces.push({
+          type: "scatter",
+          x: [state.probe.lon],
+          y: [state.probe.lat],
+          mode: "markers",
+          marker: { size: 9, color: "#111", symbol: "x" },
+          hoverinfo: "skip",
+        });
+      }
+      const box = state.meta && state.meta.regions[$("region").value];
+      Plotly.react("map", traces, baseLayout({
+        margin: { t: 8, r: 48, b: 40, l: 48 },
+        xaxis: { title: "lon °", range: box ? [box.lon_min, box.lon_max] : undefined, gridcolor: "#ddd" },
+        yaxis: { title: "lat °", range: box ? [box.lat_min, box.lat_max] : undefined, gridcolor: "#ddd", scaleanchor: "x", scaleratio: 0.7 },
+      }), { displayModeBar: false, responsive: true }).then((gd) => {
+        if (!gd._probeBound) {
+          gd._probeBound = true;
+          gd.on("plotly_click", (ev) => {
+            const pt = ev.points && ev.points[0];
+            if (!pt) return;
+            probe(pt.y, pt.x);
+          });
+        }
+      });
+    }
+
+    function renderCdf() {
+      const layers = state.run ? Object.values(state.run.layers) : [];
+      const traces = layers.map((layer, i) => ({
+        x: layer.ecdf.x,
+        y: layer.ecdf.y,
+        mode: "lines",
+        name: `FRF ${layer.reuse_factor}`,
+        line: { width: 2, color: i === 0 && layers.length > 1 ? "#3a5f8a" : "#b4554a" },
+      }));
+      traces.push({ x: [0, 0], y: [0, 1], mode: "lines", line: { dash: "dash", width: 1, color: "#888" } });
+      Plotly.react("cdf", traces, baseLayout({
+        margin: { t: 24, r: 16, b: 36, l: 44 },
+        title: { text: "SINR CDF", font: { size: 12 } },
+        xaxis: { title: "SINR dB", gridcolor: "#ddd" },
+        yaxis: { title: "CDF", range: [0, 1], gridcolor: "#ddd" },
+        showlegend: true,
+        legend: { orientation: "h", y: 1.15, font: { size: 11 } },
+      }), { displayModeBar: false, responsive: true });
+    }
+
+    function renderPass(rows) {
+      if (!rows || !rows.length) return;
+      Plotly.react("pass", [
+        { x: rows.map(r => r.t_s / 60), y: rows.map(r => r.elevation_deg), name: "elev °", yaxis: "y", line: { color: "#3a5f8a" } },
+        { x: rows.map(r => r.t_s / 60), y: rows.map(r => r.sinr_db), name: "SINR dB", yaxis: "y2", line: { color: "#b4554a" } },
+      ], baseLayout({
+        margin: { t: 8, r: 40, b: 36, l: 36 },
+        xaxis: { title: "t min", gridcolor: "#ddd" },
+        yaxis: { title: "elev", gridcolor: "#ddd" },
+        yaxis2: { title: "SINR", overlaying: "y", side: "right" },
+        showlegend: true,
+        legend: { orientation: "h", y: 1.18, font: { size: 10 } },
+      }), { displayModeBar: false, responsive: true });
+    }
+
+    async function runSnapshot(compare) {
+      $("err").textContent = "";
+      setBusy(true, compare ? "FRF 1 and 3…" : "snapshot…");
+      try {
+        const data = await api("/api/run", body({ compare }));
+        state.run = data;
+        const keys = Object.keys(data.layers);
+        state.layerKey = keys[keys.length - 1];
+        const layerSel = $("layer");
+        if (keys.length > 1) {
+          layerSel.style.display = "";
+          layerSel.innerHTML = keys.map(k => `<option value="${k}">FRF ${data.layers[k].reuse_factor}</option>`).join("");
+          layerSel.value = state.layerKey;
+        } else layerSel.style.display = "none";
+        const s = activeLayer().summary;
+        $("k-cov").textContent = fmt(100 * s.coverage_fraction, 1, "%");
+        $("k-sinr").textContent = fmt(s.median_sinr_db, 2, " dB");
+        $("k-rate").textContent = fmt(s.mean_rate_mbps, 1);
+        $("k-cn").textContent = fmt(s.mean_snr_db, 2, " dB");
+        renderMap();
+        renderCdf();
+        $("ready").textContent = `ready  ${activeLayer().elapsed_s.toFixed(1)} s`;
+      } catch (e) {
+        $("err").textContent = e.message;
+        $("ready").textContent = "error";
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function probe(lat, lon) {
+      try {
+        const p = await api("/api/probe", body({ lat, lon }));
+        state.probe = p;
+        $("budget").textContent = p.budget;
+        $("passbtn").disabled = false;
+        renderMap();
+      } catch (e) {
+        $("err").textContent = e.message;
+      }
+    }
+
+    $("run").onclick = () => runSnapshot(false);
+    $("compare").onclick = () => runSnapshot(true);
+    $("field").onchange = renderMap;
+    $("layer").onchange = () => {
+      state.layerKey = $("layer").value;
+      const s = activeLayer().summary;
+      $("k-cov").textContent = fmt(100 * s.coverage_fraction, 1, "%");
+      $("k-sinr").textContent = fmt(s.median_sinr_db, 2, " dB");
+      $("k-rate").textContent = fmt(s.mean_rate_mbps, 1);
+      $("k-cn").textContent = fmt(s.mean_snr_db, 2, " dB");
+      renderMap();
+    };
+    $("passbtn").onclick = async () => {
+      if (!state.probe) return;
+      setBusy(true, "pass…");
+      try {
+        const data = await api("/api/pass", body({
+          lat: state.probe.lat,
+          lon: state.probe.lon,
+          duration_s: 1200,
+          dt_s: 30,
+        }));
+        renderPass(data.rows);
+      } catch (e) {
+        $("err").textContent = e.message;
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    (async function init() {
+      const meta = await (await fetch("/api/meta")).json();
+      state.meta = meta;
+      $("scenario").innerHTML = meta.scenarios.map(s => `<option value="${s.name}">${s.title}</option>`).join("");
+      $("region").innerHTML = Object.keys(meta.regions).map(r => `<option value="${r}">${r}</option>`).join("");
+      $("scenario").value = "leo600-s-handheld";
+      $("region").value = "romania";
+      renderMap();
+      renderCdf();
+    })().catch((e) => { $("err").textContent = e.message; });
+  </script>
+</body>
+</html>

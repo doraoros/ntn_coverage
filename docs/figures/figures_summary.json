@@ -1,0 +1,62 @@
+{
+  "region": "romania",
+  "scenario": "leo600-s-handheld",
+  "resolution_deg": 0.2,
+  "reuse_compare": "docs/figures/reuse_compare.png",
+  "calibration_png": "docs/figures/calibration_tr38821_sc6.png",
+  "calibration": {
+    "elevation_deg": 30.0,
+    "altitude_km": 600.0,
+    "freq_ghz": 20.0,
+    "fspl_db": 179.0994803369511,
+    "fspl_3gpp_db": 179.1,
+    "snr_db": 8.232953605801924,
+    "snr_3gpp_db": 8.5,
+    "fspl_error_db": 0.0005196630488910614,
+    "snr_error_db": 0.26704639419807563
+  },
+  "frf1": {
+    "coverage_fraction": 0.6840816326530612,
+    "mean_snr_db": 8.787538610268616,
+    "mean_sinr_db": 1.0527906791391262,
+    "median_sinr_db": 1.2582478452425572,
+    "p5_sinr_db": -2.288289688799703,
+    "p50_sinr_db": 1.2582478452425572,
+    "p95_sinr_db": 3.8591311843462117,
+    "mean_rate_mbps": 32.13087445763252,
+    "mean_p_cover": 0.7654566555210001,
+    "mean_visible_sats": 11.27265306122449,
+    "mean_serving_elevation_deg": 43.278582687635094,
+    "reuse_factor": 1.0
+  },
+  "frf3": {
+    "coverage_fraction": 1.0,
+    "mean_snr_db": 8.787538610268616,
+    "mean_sinr_db": 6.862851280592999,
+    "median_sinr_db": 6.985028180219464,
+    "p5_sinr_db": 5.49920457650772,
+    "p50_sinr_db": 6.985028180219464,
+    "p95_sinr_db": 7.839375344697273,
+    "mean_rate_mbps": 63.25655492289073,
+    "mean_p_cover": 0.9430405448522761,
+    "mean_visible_sats": 11.27265306122449,
+    "mean_serving_elevation_deg": 45.922353877174935,
+    "reuse_factor": 3.0
+  },
+  "availability": {
+    "coverage_fraction": 0.9996794871794872,
+    "mean_snr_db": 9.865168469226901,
+    "mean_sinr_db": 7.321794499607508,
+    "median_sinr_db": 7.3221087922786445,
+    "p5_sinr_db": 6.952948815389955,
+    "p50_sinr_db": 7.3221087922786445,
+    "p95_sinr_db": 7.668701240683828,
+    "mean_rate_mbps": 65.5018167891136,
+    "mean_p_cover": 0.9499625094855911,
+    "mean_visible_sats": 11.467788461538461,
+    "mean_serving_elevation_deg": 56.00773139690539,
+    "reuse_factor": 3.0,
+    "ever_covered_fraction": 1.0,
+    "mean_availability": 0.9996794871794872
+  }
+}

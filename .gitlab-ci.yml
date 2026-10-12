@@ -1,0 +1,41 @@
+stages:
+  - check
+
+default:
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet --upgrade pip
+    - pip install --quiet -e ".[dev,tle]"
+  cache:
+    key:
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/pip
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  MPLBACKEND: Agg
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+lint:
+  stage: check
+  script:
+    - ruff check src tests
+
+test:
+  stage: check
+  needs: []
+  script:
+    - pytest -q --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+    expire_in: 1 week
